@@ -28,15 +28,24 @@ vi.mock('../DiagramPanel', () => ({
 const insertMarkdown = vi.fn();
 const getMarkdown = vi.fn(() => 'edited content');
 vi.mock('../MilkdownEditor', () => ({
-  default: forwardRef<MilkdownEditorHandle, { initialMarkdown: string }>(function StubEditor(
-    { initialMarkdown },
-    ref,
-  ) {
+  default: forwardRef<
+    MilkdownEditorHandle,
+    { initialMarkdown: string; onOpenDiagramPanel?: () => void }
+  >(function StubEditor({ initialMarkdown, onOpenDiagramPanel }, ref) {
     useImperativeHandle(ref, () => ({
       insertMarkdown,
       getMarkdown,
     }));
-    return <div data-testid="milkdown-editor-stub">{initialMarkdown}</div>;
+    return (
+      <div data-testid="milkdown-editor-stub">
+        {initialMarkdown}
+        {onOpenDiagramPanel && (
+          <button type="button" onClick={onOpenDiagramPanel}>
+            stub-slash-diagram
+          </button>
+        )}
+      </div>
+    );
   }),
 }));
 
@@ -45,12 +54,14 @@ const saveFile = vi.fn();
 const getRecentFiles = vi.fn();
 const addRecentFile = vi.fn();
 const getPreferences = vi.fn();
+const diagramImageSrc = vi.fn((path: string) => path);
 vi.mock('../fileCommands', () => ({
   openFile: (...args: unknown[]) => openFile(...args),
   saveFile: (...args: unknown[]) => saveFile(...args),
   getRecentFiles: () => getRecentFiles(),
   addRecentFile: (...args: unknown[]) => addRecentFile(...args),
   getPreferences: () => getPreferences(),
+  diagramImageSrc: (path: string) => diagramImageSrc(path),
 }));
 
 describe('App', () => {
@@ -66,6 +77,7 @@ describe('App', () => {
       focusModeDefault: false,
       autosaveIntervalSecs: 10,
     });
+    diagramImageSrc.mockReset().mockImplementation((path: string) => path);
   });
 
   it('renders the editor and does not show the diagram panel initially', () => {
@@ -98,8 +110,21 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Draw diagram' }));
     fireEvent.click(screen.getByRole('button', { name: 'stub-insert' }));
 
+    // The raw path from save_diagram must go through diagramImageSrc
+    // (Tauri's asset protocol) before it's usable as an <img src> — see
+    // fileCommands.diagramImageSrc.
+    expect(diagramImageSrc).toHaveBeenCalledWith('/tmp/diagrams/fake.png');
     expect(insertMarkdown).toHaveBeenCalledWith('![diagram](/tmp/diagrams/fake.png)');
     expect(screen.queryByTestId('diagram-panel-stub')).not.toBeInTheDocument();
+  });
+
+  it('opens the diagram panel when the slash menu’s "Diagram" item is chosen', () => {
+    render(<App />);
+    expect(screen.queryByTestId('diagram-panel-stub')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'stub-slash-diagram' }));
+
+    expect(screen.getByTestId('diagram-panel-stub')).toBeInTheDocument();
   });
 
   it('Open button opens a file via dialog (no path), loads it, and records it as recent', async () => {

@@ -1,16 +1,26 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 const invokeMock = vi.fn();
+const convertFileSrcMock = vi.fn();
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
+  convertFileSrc: (...args: unknown[]) => convertFileSrcMock(...args),
 }));
 
-const { openFile, saveFile, getRecentFiles, addRecentFile, getPreferences, setPreferences } =
-  await import('../fileCommands');
+const {
+  openFile,
+  saveFile,
+  getRecentFiles,
+  addRecentFile,
+  getPreferences,
+  setPreferences,
+  diagramImageSrc,
+} = await import('../fileCommands');
 
 describe('fileCommands', () => {
   beforeEach(() => {
     invokeMock.mockReset();
+    convertFileSrcMock.mockReset();
   });
 
   it('openFile passes the given path and maps the raw response', async () => {
@@ -78,5 +88,14 @@ describe('fileCommands', () => {
     expect(invokeMock).toHaveBeenCalledWith('set_preferences', {
       preferences: { theme: 'light', focus_mode_default: false, autosave_interval_secs: 10 },
     });
+  });
+
+  it('diagramImageSrc converts a raw filesystem path via the asset protocol', () => {
+    convertFileSrcMock.mockReturnValue('asset://localhost/tmp/diagrams/fake.png');
+
+    const result = diagramImageSrc('/tmp/diagrams/fake.png');
+
+    expect(convertFileSrcMock).toHaveBeenCalledWith('/tmp/diagrams/fake.png');
+    expect(result).toBe('asset://localhost/tmp/diagrams/fake.png');
   });
 });

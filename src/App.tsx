@@ -4,6 +4,7 @@ import MilkdownEditor, { type MilkdownEditorHandle } from './MilkdownEditor';
 import RecentFilesMenu from './RecentFilesMenu';
 import {
   addRecentFile,
+  diagramImageSrc,
   getPreferences,
   getRecentFiles,
   openFile,
@@ -53,7 +54,10 @@ export default function App() {
   const closeDrawing = useCallback(() => setIsDrawingOpen(false), []);
 
   const handleInsert = useCallback((imagePath: string) => {
-    editorRef.current?.insertMarkdown(`![diagram](${imagePath})`);
+    // save_diagram returns a raw absolute filesystem path; the webview
+    // can't load that directly in an <img src>, so it has to go through
+    // Tauri's asset protocol first (see fileCommands.diagramImageSrc).
+    editorRef.current?.insertMarkdown(`![diagram](${diagramImageSrc(imagePath)})`);
     setIsDrawingOpen(false);
   }, []);
 
@@ -130,6 +134,7 @@ export default function App() {
         ref={editorRef}
         initialMarkdown={documentMarkdown}
         onMarkdownChange={setMarkdown}
+        onOpenDiagramPanel={openDrawing}
       />
 
       {isDrawingOpen && <DiagramPanel onInsert={handleInsert} onCancel={closeDrawing} />}

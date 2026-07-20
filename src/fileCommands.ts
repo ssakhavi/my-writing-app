@@ -3,7 +3,7 @@
 // preferences.rs). Kept as plain functions rather than a class/hook so
 // they're trivial to mock in component tests the same way DiagramPanel's
 // `invoke` calls are mocked.
-import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 
 export interface OpenedFile {
   path: string;
@@ -57,6 +57,18 @@ export async function getPreferences(): Promise<Preferences> {
     focusModeDefault: raw.focus_mode_default,
     autosaveIntervalSecs: raw.autosave_interval_secs,
   };
+}
+
+/**
+ * Converts an absolute filesystem path (e.g. one returned by `save_diagram`)
+ * into a URL the webview can actually load in an `<img src>`. Tauri webviews
+ * can't load raw `file://`-style absolute paths for security reasons — they
+ * must go through the asset protocol, scoped in tauri.conf.json to
+ * `$APPDATA/diagrams/*`. Without this, inserted diagram images silently
+ * fail to render.
+ */
+export function diagramImageSrc(path: string): string {
+  return convertFileSrc(path);
 }
 
 export async function setPreferences(preferences: Preferences): Promise<void> {
