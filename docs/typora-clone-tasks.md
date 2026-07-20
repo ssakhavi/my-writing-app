@@ -19,17 +19,18 @@ Derived from `typora-clone-prd.md` and `typora-clone-system-design.md`. Organize
 - [ ] Add branch protection requiring all three checks (`format-check`, `lint`, `test`) to pass before merge
 - [ ] Write initial README (setup, build, run instructions, and the TDD/CI working agreement above)
 
-## Phase 0.5 — Engine spike (de-risk before committing to architecture)
+## Phase 0.5 — Engine spike (de-risk before committing to architecture) — COMPLETE, GO (2026-07-20)
 
 Spike code is deliberately exempt from strict TDD (its purpose is throwaway learning), but the round-trip check itself must be a real automated test, since it's the go/no-go gate.
 
-- [ ] Prototype Milkdown live rendering of headings, bold/italic, lists
-- [ ] Prototype Milkdown table editing
-- [ ] Wire up `pulldown-cmark` in Rust
-- [ ] test: round-trip test asserting Milkdown's serialized output re-parses cleanly through `pulldown-cmark` for every P0 construct (headings, lists, tables, code, math, links, images)
-- [ ] Explicit go/no-go check based on that test's results
-- [ ] Fallback plan check: if Milkdown fails the spike, evaluate CodeMirror 6 + markdown-it hybrid (per tech research doc)
-- [ ] Prototype typewriter scrolling behavior against Milkdown/ProseMirror's default scroll handling — confirm no fight between the two
+- [x] Prototype Milkdown live rendering of headings, bold/italic, lists — `src/spike/MilkdownSpike.tsx` (Crepe editor, toggled via "Milkdown spike" button in the app shell)
+- [x] Prototype Milkdown table editing — same spike component; Crepe's default `Table` feature is enabled
+- [x] Wire up `pulldown-cmark` in Rust — already in `src-tauri/Cargo.toml`; also used standalone in `tools/md-validator` (see below)
+- [x] test: round-trip test asserting Milkdown's serialized output re-parses cleanly through `pulldown-cmark` for every P0 construct — `src/__tests__/milkdown-roundtrip.test.ts`, 13/13 passing. Built `tools/md-validator`, a standalone Rust crate (no Tauri/GTK dependency, so it compiles anywhere `pulldown-cmark` itself compiles) that parses markdown and reports structural findings as JSON; the frontend test shells out to it via `src/spike/mdValidator.ts` (`cargo run`) so the check genuinely crosses the JS/Rust boundary rather than trusting Milkdown's own serializer
+- [x] Explicit go/no-go check based on that test's results — **GO.** Headings, bold/italic/strikethrough/inline code, ordered/unordered/task lists, blockquotes, links, horizontal rules, fenced code blocks (with language), tables, and inline/block math (survives as literal text — `pulldown-cmark` has no math extension, which is fine, math delimiters aren't meant to be structurally parsed) all round-trip correctly
+- [x] Real finding, not just a pass/fail: Crepe's default `ImageBlock` feature discards accessible alt text — it repurposes the markdown `alt` field as an internal image-resize ratio (`node_modules/@milkdown/components/src/image-block/schema.ts`). Fix: disable `CrepeFeature.ImageBlock`, which falls back to inline image handling and preserves alt text correctly (verified in the round-trip test and applied in the spike component). Revisit if resizable images turn out to matter more than alt-text fidelity — could instead extend the `image-block` schema with a real `alt` attribute alongside `ratio`.
+- [ ] Fallback plan check: not needed — Milkdown passed the gate, no need to evaluate the CodeMirror 6 + markdown-it fallback
+- [ ] Prototype typewriter scrolling behavior against Milkdown/ProseMirror's default scroll handling — **not yet verified.** This sandbox has no display/browser, so live-rendering feel, table-editing UX, and scroll behavior can't be checked headlessly (jsdom doesn't render pixels or run real contenteditable/Selection behavior). The spike component is wired up and ready — run `npm run tauri dev`, click "Milkdown spike", and manually check: (1) live formatting with no flicker, (2) table row/column add/remove from the UI, (3) typing feel on a longer document, (4) scroll behavior. Do this before Phase 1 starts.
 
 ## Phase 1 — P0 core: shell, file I/O, basic editing
 

@@ -29,8 +29,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Check Rust formatting
+      - name: Check Rust formatting (src-tauri)
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
+
+      - name: Check Rust formatting (tools/md-validator)
+        run: cargo fmt --manifest-path tools/md-validator/Cargo.toml -- --check
 
       - name: Check frontend formatting
         run: npm run format:check
@@ -60,7 +63,9 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: |
+            src-tauri
+            tools/md-validator
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -71,8 +76,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Run clippy
+      - name: Run clippy (src-tauri)
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: Run clippy (tools/md-validator)
+        run: cargo clippy --manifest-path tools/md-validator/Cargo.toml --all-targets -- -D warnings
 
       - name: Run eslint
         run: npm run lint
@@ -100,7 +108,9 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: src-tauri
+          workspaces: |
+            src-tauri
+            tools/md-validator
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -111,8 +121,11 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Run Rust tests
+      - name: Run Rust tests (src-tauri)
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Run Rust tests (tools/md-validator)
+        run: cargo test --manifest-path tools/md-validator/Cargo.toml
 
       - name: Run frontend tests
         run: npm run test

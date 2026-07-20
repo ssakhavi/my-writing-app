@@ -193,6 +193,15 @@ Traditional "scale" analysis (QPS, horizontal scaling, load balancers) doesn't a
 
 A standalone React root (`src/main.tsx`) hosts a placeholder textarea shell (`src/App.tsx`) plus a full-screen tldraw canvas (`src/DiagramPanel.tsx`), so the drawing workflow could be built and tested before the Milkdown editor exists. "Insert diagram" flattens the current tldraw page to a PNG in the browser, base64-encodes it, and calls a new Rust command (`save_diagram`) that decodes it and writes it to `<app data dir>/diagrams/<uuid>.png`; the frontend then inserts a normal `![diagram](path)` markdown reference at the cursor. This is intentionally a side-channel, not an extension of the core architecture in section 2 — no new persistent state, no change to the single-`.md`-file-is-the-source-of-truth model. Two things to reconcile once Phase 1 lands: the placeholder textarea needs to be replaced by real Milkdown insertion, and diagrams currently save to the app data dir rather than a doc-relative `assets/` folder, which matters for portability once file open/save exists.
 
+## 5.2 Engine spike result (2026-07-20): GO on Milkdown, via `@milkdown/crepe`
+
+The Phase 0.5 spike (`docs/typora-clone-tasks.md`) confirmed the architecture in section 2: Milkdown is the editor core, `pulldown-cmark` is the Rust-side validator, and the two agree on structure for every P0 construct. Two concrete additions beyond what section 2 described:
+
+- **`@milkdown/crepe`**, not a hand-assembled `@milkdown/kit` preset stack — it's Milkdown's official pre-built WYSIWYG package (commonmark/gfm, tables, code blocks, KaTeX math, image handling, all included), which better matches this app's "minimal setup" goal than composing presets manually.
+- **`tools/md-validator`**: a small standalone Rust crate (just `pulldown-cmark` + `serde_json`, no Tauri dependency) that parses markdown and reports structural findings as JSON. It exists so the frontend round-trip test can shell out to the *real* `pulldown-cmark` crate the app validates saves with, rather than trusting Milkdown's own serializer never lies to itself. It's a dev/test-only tool, not part of the shipped app — `src-tauri` still owns the actual save-time validation.
+
+One schema gotcha to carry into Phase 1: Crepe's default `ImageBlock` feature repurposes the image `alt` attribute as an internal resize ratio, silently discarding real alt text. Ship with `CrepeFeature.ImageBlock` disabled (inline image handling preserves alt text correctly); revisit if resizable images turn out to be worth a custom schema.
+
 ## 6. What to Revisit as the System Grows
 
 - **If documents regularly exceed ~5,000 lines**: investigate whether ProseMirror/Milkdown needs virtualization or whether a hybrid source-mode-for-huge-files fallback is warranted.
