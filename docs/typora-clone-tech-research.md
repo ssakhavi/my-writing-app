@@ -51,3 +51,9 @@ Confidence: Low (this is a gap, not a finding) — flagged as the top open risk.
 - Milkdown vs. CodeMirror 6 + markdown-it: recommend starting with Milkdown per above; spike should produce a go/no-go decision, not just a demo. (engineering)
 - Shiki vs. highlight.js: recommend highlight.js for the live editor; open question is whether a separate Shiki pass is worth the added complexity for export-only rendering, or whether highlight.js output is good enough for exported HTML/PDF too. (engineering)
 - No comparable existing open-source project was found that combines this exact stack (Tauri + Milkdown + pulldown-cmark) — worth a quick search for prior art/reference implementations before the spike starts, to avoid rediscovering integration pitfalls others have already solved. (engineering)
+
+## Addendum (2026-07-20): React added, scoped to the diagram panel only
+
+Finding 2 above concluded the app "doesn't need React." That's revised, but narrowly: the app owner asked for a freeform tldraw drawing panel ahead of the Milkdown spike (see `typora-clone-tasks.md`, "Diagram support — tldraw drawing panel"), and tldraw's supported integration path is React. The frontend now bootstraps a React root (`src/main.tsx` → `src/App.tsx`) with the diagram panel as a component.
+
+This does **not** change the Milkdown recommendation above — Milkdown/ProseMirror remain framework-agnostic and vanilla-first is still the plan for the editor core itself once Phase 1 starts. React's footprint here is limited to hosting the tldraw canvas and the (currently placeholder) textarea shell that predates the real editor. Revisit whether the eventual Milkdown integration should also mount through React (simpler, one root) or stay vanilla alongside it (smaller footprint, matches the original plan) once the Phase 0.5 engine spike happens.

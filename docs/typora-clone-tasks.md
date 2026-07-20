@@ -118,6 +118,21 @@ Same test-first pairing applies.
 - [ ] Track input responsiveness on documents approaching ~5,000 lines; flag regressions past the 16ms/keystroke target
 - [ ] Revisit open questions as they're resolved: OS build scope, repo visibility, autosave interval default
 
+## Diagram support — tldraw drawing panel (added ahead of schedule, 2026-07-20)
+
+Supersedes the deferred item below for freeform diagrams specifically. Decision: rather than a text-syntax diagram language (Mermaid/D2, per `typora-clone-mermaid-alternatives.md`), the user asked directly for tldraw as a freeform drawing tool available on demand. Implemented as a standalone panel, not inline editable blocks: draw on a full-screen tldraw canvas, "Insert diagram" flattens the page to PNG and inserts a normal `![diagram](path)` markdown image reference. This sidesteps the file-format questions inline embedding would raise (storing tldraw scene JSON in/alongside the document) and works even though the Milkdown editor doesn't exist yet — for now it targets the placeholder textarea shell in `src/App.tsx`.
+
+- [x] Add React + tldraw dependencies, wire Vite/tsconfig/eslint for JSX
+- [x] Minimal app shell (toolbar + textarea) to host the panel pre-Milkdown
+- [x] `DiagramPanel` component: full-screen tldraw canvas, Insert/Cancel
+- [x] `save_diagram` Rust command: decode base64 PNG, write to `<app data dir>/diagrams/<uuid>.png`
+- [x] Insert markdown image reference at cursor on save
+- [x] Retrofit to the working agreement: extracted `decode_diagram_png` as a pure, unit-tested function (base64 round-trip, invalid input, filename uniqueness); added Vitest + Testing Library coverage for `App` (open/close, cursor-position insertion) and `DiagramPanel` (no-shapes error, success path, save-failure error, cancel), with tldraw/`invoke` mocked out
+- [ ] `cargo test`/`cargo clippy` on `save_diagram` haven't run end-to-end — this sandbox has no `sudo` to install the WebKitGTK/GTK dev libs Tauri needs to compile (`cargo fmt` and the extracted-function unit tests were verified in isolation; full compile is gated on CI or a real dev machine with prerequisites installed)
+- [ ] Once Milkdown exists: reconcile the placeholder textarea shell with the real editor, and re-run this insertion flow against it
+- [ ] Revisit whether diagrams should also support inline re-editable tldraw blocks (Option B from the original scope discussion) rather than flattened images only
+- [ ] Diagrams currently save to the app data dir, not alongside the document — revisit once file-open/save (Phase 1) exists, so images can live in a doc-relative `assets/` folder for portability
+
 ## Explicitly deferred (P2 / future — do not schedule yet)
 
 - Custom theme editor / user-defined CSS
@@ -125,4 +140,4 @@ Same test-first pairing applies.
 - Multi-window / multi-document support
 - External sync (Dropbox/iCloud) file-watching support
 - Outline/table-of-contents navigation
-- Diagram support (Mermaid/D2/etc.) — pending the scope decision raised in `typora-clone-mermaid-alternatives.md`
+- Text-syntax diagram language (Mermaid/D2/etc.) — freeform drawing is now covered by the tldraw panel above; a typed diagram syntax remains a separate, still-deferred decision
