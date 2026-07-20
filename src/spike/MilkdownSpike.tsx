@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { Crepe } from '@milkdown/crepe';
+// theme/classic.css is only color/font custom properties. The actual
+// structural styles — table borders, the hover-triggered row/column add
+// controls, block-edit handles, etc. — live in theme/common/style.css and
+// have to be imported separately. Without this, the table renders but its
+// hover controls are present in the DOM and functional, just invisible.
+import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/classic.css';
 
 interface MilkdownSpikeProps {
