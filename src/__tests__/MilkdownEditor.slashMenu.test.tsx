@@ -1,7 +1,6 @@
 // Verifies the slash-menu customization Crepe is configured with —
-// removing the "Divider" item and adding "Format" (bold/italic/
-// strikethrough/inline code) and "Diagram" items. Exercising the real
-// slash menu would mean simulating a "/" keystroke into a ProseMirror
+// removing the "Divider" item and adding a "Diagram" item. Exercising the
+// real slash menu would mean simulating a "/" keystroke into a ProseMirror
 // contenteditable in jsdom, which is fragile and not how the rest of this
 // suite tests Milkdown integration points (see fileCommands.test.ts for the
 // established pattern of mocking the boundary and asserting on what's
@@ -14,12 +13,6 @@
 // `getGroups()` seeds them before calling `buildMenu`.
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
-import {
-  toggleEmphasisCommand,
-  toggleInlineCodeCommand,
-  toggleStrongCommand,
-} from '@milkdown/kit/preset/commonmark';
-import { toggleStrikethroughCommand } from '@milkdown/kit/preset/gfm';
 
 let capturedConfig: Record<string, unknown> | undefined;
 
@@ -94,37 +87,13 @@ describe('MilkdownEditor slash-menu customization', () => {
     expect(getBlockEditConfig().textGroup?.divider).toBeNull();
   });
 
-  it('adds a Format group with Bold/Italic/Strikethrough/Inline Code items wired to the right toggle commands', () => {
+  it('does not add a Format group to the menu', () => {
     render(<MilkdownEditor initialMarkdown="" />);
     const builder = makeFakeBuilder();
 
     getBlockEditConfig().buildMenu(builder);
 
-    expect(builder.groups.format?.map((item) => item.key)).toEqual([
-      'bold',
-      'italic',
-      'strikethrough',
-      'inline-code',
-    ]);
-
-    const callSpy = vi.fn();
-    const fakeCtx = { get: () => ({ call: callSpy }) };
-    const runItem = (key: string) => {
-      const item = builder.groups.format?.find((i) => i.key === key);
-      item?.onRun?.(fakeCtx);
-    };
-
-    runItem('bold');
-    expect(callSpy).toHaveBeenLastCalledWith(toggleStrongCommand.key);
-
-    runItem('italic');
-    expect(callSpy).toHaveBeenLastCalledWith(toggleEmphasisCommand.key);
-
-    runItem('strikethrough');
-    expect(callSpy).toHaveBeenLastCalledWith(toggleStrikethroughCommand.key);
-
-    runItem('inline-code');
-    expect(callSpy).toHaveBeenLastCalledWith(toggleInlineCodeCommand.key);
+    expect(builder.groups.format).toBeUndefined();
   });
 
   it('adds a Diagram item to the advanced group that opens the diagram panel', () => {

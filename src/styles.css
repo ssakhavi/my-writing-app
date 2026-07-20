@@ -109,6 +109,22 @@ button:disabled {
   padding: 2rem 10vw;
 }
 
+/* Crepe's slash menu caps its item list at 420px and scrolls past that
+ * (node_modules/@milkdown/crepe/lib/theme/common/block-edit.css), which
+ * shows a visible scrollbar track/thumb — out of place in this app's
+ * minimalist aesthetic. Hide the scrollbar visually; scrolling (wheel,
+ * keyboard nav) still works, it's just not rendered. !important + the same
+ * selector Crepe uses: its stylesheet is injected after this one (loaded
+ * via JS import in MilkdownEditor.tsx, this file is a plain <link> in
+ * index.html loaded first), so equal-specificity rules here would lose the
+ * cascade otherwise. */
+.milkdown .milkdown-slash-menu .menu-groups {
+  scrollbar-width: none !important; /* Firefox */
+}
+.milkdown .milkdown-slash-menu .menu-groups::-webkit-scrollbar {
+  display: none !important; /* WebKit/Chromium — this is what Tauri's webview uses */
+}
+
 .diagram-modal {
   position: fixed;
   inset: 0;
