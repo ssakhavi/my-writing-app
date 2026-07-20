@@ -1,6 +1,6 @@
 import { forwardRef, useImperativeHandle } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import App from '../App';
 import type { MilkdownEditorHandle } from '../MilkdownEditor';
 
@@ -24,9 +24,9 @@ vi.mock('../DiagramPanel', () => ({
 
 // MilkdownEditor mounts a real Crepe instance — that behavior has its own
 // focused test suite (MilkdownEditor.test.tsx). Here we only need to verify
-// App wires the ref correctly, so stub it with a fake imperative handle we
-// can spy on.
+// App wires the ref and remount-on-open behavior correctly.
 const insertMarkdown = vi.fn();
+const getMarkdown = vi.fn(() => 'edited content');
 vi.mock('../MilkdownEditor', () => ({
   default: forwardRef<MilkdownEditorHandle, { initialMarkdown: string }>(function StubEditor(
     { initialMarkdown },
@@ -34,17 +34,50 @@ vi.mock('../MilkdownEditor', () => ({
   ) {
     useImperativeHandle(ref, () => ({
       insertMarkdown,
-      getMarkdown: () => initialMarkdown,
+      getMarkdown,
     }));
-    return <div data-testid="milkdown-editor-stub" />;
+    return <div data-testid="milkdown-editor-stub">{initialMarkdown}</div>;
   }),
 }));
 
+const openFile = vi.fn();
+const saveFile = vi.fn();
+const getRecentFiles = vi.fn();
+const addRecentFile = vi.fn();
+const getPreferences = vi.fn();
+vi.mock('../fileCommands', () => ({
+  openFile: (...args: unknown[]) => openFile(...args),
+  saveFile: (...args: unknown[]) => saveFile(...args),
+  getRecentFiles: () => getRecentFiles(),
+  addRecentFile: (...args: unknown[]) => addRecentFile(...args),
+  getPreferences: () => getPreferences(),
+}));
+
 describe('App', () => {
+  beforeEach(() => {
+    insertMarkdown.mockClear();
+    getMarkdown.mockClear();
+    openFile.mockReset();
+    saveFile.mockReset();
+    getRecentFiles.mockReset().mockResolvedValue([]);
+    addRecentFile.mockReset().mockResolvedValue(undefined);
+    getPreferences.mockReset().mockResolvedValue({
+      theme: 'light',
+      focusModeDefault: false,
+      autosaveIntervalSecs: 10,
+    });
+  });
+
   it('renders the editor and does not show the diagram panel initially', () => {
     render(<App />);
     expect(screen.getByTestId('milkdown-editor-stub')).toBeInTheDocument();
     expect(screen.queryByTestId('diagram-panel-stub')).not.toBeInTheDocument();
+  });
+
+  it('loads recent files and preferences on mount', async () => {
+    render(<App />);
+    await waitFor(() => expect(getRecentFiles).toHaveBeenCalled());
+    expect(getPreferences).toHaveBeenCalled();
   });
 
   it('opens the diagram panel when "Draw diagram" is clicked', () => {
@@ -61,12 +94,63 @@ describe('App', () => {
   });
 
   it('tells the editor to insert the markdown image reference and closes the panel on insert', () => {
-    insertMarkdown.mockClear();
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Draw diagram' }));
     fireEvent.click(screen.getByRole('button', { name: 'stub-insert' }));
 
     expect(insertMarkdown).toHaveBeenCalledWith('![diagram](/tmp/diagrams/fake.png)');
     expect(screen.queryByTestId('diagram-panel-stub')).not.toBeInTheDocument();
+  });
+
+  it('Open button opens a file via dialog (no path), loads it, and records it as recent', async () => {
+    openFile.mockResolvedValue({ path: '/tmp/notes/doc.md', content: '# Doc', modifiedAt: 1 });
+    getRecentFiles.mockResolvedValueOnce([]).mockResolvedValueOnce(['/tmp/notes/doc.md']);
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+
+    await waitFor(() => expect(openFile).toHaveBeenCalledWith(undefined));
+    await waitFor(() => expect(addRecentFile).toHaveBeenCalledWith('/tmp/notes/doc.md'));
+    await waitFor(() =>
+      expect(screen.getByTestId('milkdown-editor-stub')).toHaveTextContent('# Doc'),
+    );
+    // The toolbar title should switch from the app name to the open file's name.
+    await waitFor(() => expect(screen.getByText('doc.md')).toBeInTheDocument());
+  });
+
+  it('Save button saves the editor content to the currently open file', async () => {
+    openFile.mockResolvedValue({ path: '/tmp/notes/doc.md', content: '# Doc', modifiedAt: 1 });
+    saveFile.mockResolvedValue(undefined);
+
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await waitFor(() => expect(openFile).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(saveFile).toHaveBeenCalledWith('/tmp/notes/doc.md', 'edited content'),
+    );
+  });
+
+  it('Save shows an error instead of calling saveFile when no file is open yet', () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(saveFile).not.toHaveBeenCalled();
+    expect(screen.getByText(/Open a file first/)).toBeInTheDocument();
+  });
+
+  it('selecting a recent file opens it', async () => {
+    getRecentFiles.mockResolvedValue(['/tmp/notes/doc.md']);
+    openFile.mockResolvedValue({ path: '/tmp/notes/doc.md', content: '# Doc', modifiedAt: 1 });
+
+    render(<App />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Recent' })).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Recent' }));
+    fireEvent.click(screen.getByRole('button', { name: 'doc.md' }));
+
+    await waitFor(() => expect(openFile).toHaveBeenCalledWith('/tmp/notes/doc.md'));
   });
 });

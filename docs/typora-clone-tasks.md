@@ -37,19 +37,21 @@ Spike code is deliberately exempt from strict TDD (its purpose is throwaway lear
 Every row below is a test-first pair: write and confirm the test fails, then implement until it passes.
 
 **App shell**
-- [ ] test: app launches to an editable window within the target cold-start budget → impl: Tauri window/menu shell (minimal chrome per distraction-free goal)
-- [ ] test: preferences persist and reload correctly (theme, focus-mode defaults, autosave interval) → impl: local preferences store as a flat local config file
+- [ ] test: app launches to an editable window within the target cold-start budget → impl: Tauri window/menu shell (minimal chrome per distraction-free goal). **Not automated** — real cold-start timing needs an actual OS process launch, which can't be measured in a headless test; tracked instead via the Cross-cutting "track cold-start time locally" item.
+- [x] test: preferences persist and reload correctly (theme, focus-mode defaults, autosave interval) → impl: local preferences store as a flat local config file. `src-tauri/src/preferences.rs` (`get_preferences`/`set_preferences`, backed by `store.rs`'s generic JSON load/save), 4 Rust unit tests (defaults, round-trip, lowercase theme serialization, missing-field fallback via `#[serde(default)]`). `src/fileCommands.ts` wraps both commands with snake_case↔camelCase mapping (7 tests); `App.tsx` loads preferences on mount. Theme/focus-mode *application* (actually changing how the app looks/behaves) is Phase 2 scope per that phase's own Themes/Focus-mode sections — this task is the persistence layer only.
 
 **File I/O (Rust commands)**
-- [ ] test: `open_file` reads a known file's contents correctly, including via native dialog path → impl: `open_file` command
-- [ ] test: `save_file` rejects content that fails `pulldown-cmark` validation, and writes atomically (temp file + rename) on success → impl: `save_file` command
-- [ ] test: recent-files list caps at N entries and evicts oldest correctly → impl: `get_recent_files` / `add_recent_file` commands
-- [ ] test: recent-files UI reflects backend state → impl: recent-files UI (no persistent file-tree sidebar, per PRD non-goal)
+- [x] test: `open_file` reads a known file's contents correctly, including via native dialog path → impl: `open_file` command. `src-tauri/src/file_io.rs`: `read_markdown_file` is the testable pure core (2 tests: known file, missing file); the command wraps it and falls back to `tauri-plugin-dialog`'s native picker when no path is given. The dialog path itself isn't unit-testable (drives real OS UI).
+- [x] test: `save_file` rejects content that fails `pulldown-cmark` validation, and writes atomically (temp file + rename) on success → impl: `save_file` command. `validate_markdown` + `atomic_write` (via `tempfile::NamedTempFile` + `persist`), 6 tests covering acceptance of ordinary and unusual-but-valid markdown, NUL-byte rejection, atomic overwrite, and that a rejected save never touches the original file. Note: CommonMark parsers are permissive by design, so "validation" here is narrower than it sounds — see the module doc comment.
+- [x] test: recent-files list caps at N entries and evicts oldest correctly → impl: `get_recent_files` / `add_recent_file` commands. `src-tauri/src/recent_files.rs`: `add_recent` is the pure, tested core (5 tests: insert-at-front, dedup-and-move-to-front, cap enforcement, oldest-eviction, empty-list). Cap is 10, the top of the PRD's "last 5–10 files" range.
+- [x] test: recent-files UI reflects backend state → impl: recent-files UI (no persistent file-tree sidebar, per PRD non-goal). `src/RecentFilesMenu.tsx`, a toolbar dropdown showing basenames of `getRecentFiles()`'s result; 4 tests (hidden when empty, closed by default, shows basenames, selects full path and closes).
 
 **Editor core**
-- [ ] test: Milkdown editor mounts and accepts input → impl: integrate Milkdown into the frontend shell
-- [ ] test: each basic construct (bold, italic, strikethrough, headings, ordered/unordered/task lists, blockquotes, links, images, horizontal rules) renders correctly and serializes back to the expected markdown → impl: basic formatting support
-- [ ] test: full round-trip (type → serialize → `pulldown-cmark` validate) passes for all Phase 1 constructs → impl: wire the save path through the validated round-trip
+- [x] test: Milkdown editor mounts and accepts input → impl: integrate Milkdown into the frontend shell. `src/MilkdownEditor.tsx` replaces the Phase 0.5 spike/placeholder as the real editor, same Crepe config the round-trip test validated (`ImageBlock` disabled, both theme stylesheets). 4 tests: mounts + renders initial content, `getMarkdown()` reflects it, `insertMarkdown()` inserts at cursor and fires `onMarkdownChange`, survives unmount right after mount.
+- [x] test: each basic construct (bold, italic, strikethrough, headings, ordered/unordered/task lists, blockquotes, links, images, horizontal rules) renders correctly and serializes back to the expected markdown → impl: basic formatting support. Covered by the Phase 0.5 round-trip suite (`src/__tests__/milkdown-roundtrip.test.ts`, 13/13), which exercises the same Crepe configuration `MilkdownEditor` now uses in production.
+- [x] test: full round-trip (type → serialize → `pulldown-cmark` validate) passes for all Phase 1 constructs → impl: wire the save path through the validated round-trip. `App.tsx`'s Save button calls `editorRef.getMarkdown()` → `saveFile(path, content)` → Rust `save_file` → `validate_markdown` (parses via `pulldown-cmark`) → `atomic_write`. End-to-end path exists and is unit-tested piece by piece; not yet manually verified on a real machine (see note below).
+
+**Known gap: this sandbox can't compile `src-tauri` end to end.** Same limitation as Phase 0/the diagram panel — no `sudo` here to install WebKitGTK. All the Rust modules above were verified via `cargo fmt` (full syntax/AST check, passes) and by manually cross-referencing every external API call (`tauri::Manager::path`, `tauri_plugin_dialog::DialogExt`, `FilePath::into_path`, etc.) against the actual downloaded crate source in `~/.cargo/registry`, since `cargo check`/`cargo test`/`cargo clippy` all fail at the same `gdk-sys` pkg-config step before reaching this crate's own code. Before trusting this Phase 1 backend work, run `cd src-tauri && cargo test && cargo clippy --all-targets -- -D warnings` on a real machine (confirmed working previously — the diagram panel's `Cargo.lock` update proved `cargo build` succeeds there) — this hasn't been done yet for this batch of changes.
 
 **Slash-command menu (scaffolding)**
 - [ ] test: typing `/` at line start (or after whitespace) opens the menu; typing more filters the list; Escape dismisses → impl: slash-trigger detection + filterable menu component
@@ -133,6 +135,17 @@ Supersedes the deferred item below for freeform diagrams specifically. Decision:
 - [ ] Once Milkdown exists: reconcile the placeholder textarea shell with the real editor, and re-run this insertion flow against it
 - [ ] Revisit whether diagrams should also support inline re-editable tldraw blocks (Option B from the original scope discussion) rather than flattened images only
 - [ ] Diagrams currently save to the app data dir, not alongside the document — revisit once file-open/save (Phase 1) exists, so images can live in a doc-relative `assets/` folder for portability
+
+## Tufte-style preview theme — sidenote footnotes (requested 2026-07-20)
+
+New, not in the original PRD. Extends the P0 theme system (light/dark, Phase 2) with a third built-in theme modeled on Tufte-CSS: footnotes render as sidenotes in the right margin next to their reference point, instead of collected at the bottom of the document. Depends on the Phase 2 footnote task (line "test: footnote reference + definition insert, render, and round-trip correctly") — sidenotes are a rendering variant of that construct, not a new markdown syntax, so markdown source and round-trip behavior are unaffected; only the WYSIWYG rendering changes.
+
+- [ ] Open question: does this apply globally (replacing body typography/margins document-wide) as a fourth theme choice, or is it a toggle orthogonal to light/dark that only changes footnote placement? Decide before implementation.
+- [ ] test: footnote definitions render as sidenotes in the right margin, vertically aligned with their reference point, rather than collected at document end → impl: sidenote layout for footnotes under Tufte theme
+- [ ] test: sidenotes with closely-spaced references stack without overlapping → impl: vertical collision handling for stacked sidenotes
+- [ ] test: below a defined viewport-width breakpoint (no room for a margin), footnotes fall back to standard bottom-of-document rendering → impl: responsive breakpoint fallback
+- [ ] test: Tufte theme applies expected typography tokens (serif body font, margin width) and passes the same token/contrast check used for light/dark → impl: Tufte theme stylesheet
+- [ ] test: switching to/from the Tufte theme persists and applies without reload, consistent with the existing theme switcher → impl: wire into existing theme switcher UI
 
 ## Explicitly deferred (P2 / future — do not schedule yet)
 
