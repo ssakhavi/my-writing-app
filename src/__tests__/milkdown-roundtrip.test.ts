@@ -15,7 +15,7 @@
 // pulldown-cmark-backed validator binary -> assert the structure survived.
 import { beforeAll, describe, expect, it } from 'vitest';
 import { Crepe } from '@milkdown/crepe';
-import { runMdValidator } from '../spike/mdValidator';
+import { runMdValidator } from '../test-utils/mdValidator';
 
 // Crepe's default `ImageBlock` feature repurposes the markdown `alt` field
 // as an internal resize ratio (see node_modules/@milkdown/components/src/

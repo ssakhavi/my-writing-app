@@ -1,37 +1,27 @@
 import { useCallback, useRef, useState } from 'react';
 import DiagramPanel from './DiagramPanel';
-import MilkdownSpike from './spike/MilkdownSpike';
+import MilkdownEditor, { type MilkdownEditorHandle } from './MilkdownEditor';
 
-const PLACEHOLDER = `# Untitled
+const INITIAL_MARKDOWN = `# Untitled
 
-Start writing here. This plain-text view is a temporary stand-in until the
-Milkdown WYSIWYG editor is built (see docs/typora-clone-tasks.md) — for now
-it's enough to host the tldraw diagram panel.
+Start writing here.
 
 Use "Draw diagram" to sketch something and insert it as an image.
 `;
 
 export default function App() {
-  const [markdown, setMarkdown] = useState(PLACEHOLDER);
   const [isDrawingOpen, setIsDrawingOpen] = useState(false);
-  const [isSpikeOpen, setIsSpikeOpen] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  // Tracks the editor's current content for future save-path wiring
+  // (Phase 1's save_file work); the editor itself is uncontrolled and owns
+  // its own document state.
+  const [, setMarkdown] = useState(INITIAL_MARKDOWN);
+  const editorRef = useRef<MilkdownEditorHandle | null>(null);
 
   const openDrawing = useCallback(() => setIsDrawingOpen(true), []);
   const closeDrawing = useCallback(() => setIsDrawingOpen(false), []);
-  const openSpike = useCallback(() => setIsSpikeOpen(true), []);
-  const closeSpike = useCallback(() => setIsSpikeOpen(false), []);
 
   const handleInsert = useCallback((imagePath: string) => {
-    const textarea = textareaRef.current;
-    const snippet = `![diagram](${imagePath})\n`;
-
-    setMarkdown((prev) => {
-      if (!textarea) return prev + '\n' + snippet;
-      const start = textarea.selectionStart ?? prev.length;
-      const end = textarea.selectionEnd ?? prev.length;
-      return prev.slice(0, start) + snippet + prev.slice(end);
-    });
+    editorRef.current?.insertMarkdown(`![diagram](${imagePath})`);
     setIsDrawingOpen(false);
   }, []);
 
@@ -42,21 +32,15 @@ export default function App() {
         <button type="button" onClick={openDrawing}>
           Draw diagram
         </button>
-        <button type="button" onClick={openSpike}>
-          Milkdown spike
-        </button>
       </header>
 
-      <textarea
-        ref={textareaRef}
-        className="app-editor"
-        value={markdown}
-        onChange={(e) => setMarkdown(e.target.value)}
-        spellCheck={false}
+      <MilkdownEditor
+        ref={editorRef}
+        initialMarkdown={INITIAL_MARKDOWN}
+        onMarkdownChange={setMarkdown}
       />
 
       {isDrawingOpen && <DiagramPanel onInsert={handleInsert} onCancel={closeDrawing} />}
-      {isSpikeOpen && <MilkdownSpike onClose={closeSpike} />}
     </main>
   );
 }
