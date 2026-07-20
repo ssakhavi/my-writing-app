@@ -23,14 +23,13 @@ jobs:
         with:
           workspaces: src-tauri
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
+          bun-version: latest
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0

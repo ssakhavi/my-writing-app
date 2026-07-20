@@ -114,6 +114,10 @@ Same test-first pairing applies.
 - [ ] test: notifications are suppressed while focus mode is active, restored on exit → impl: "do not disturb" integration
 - [ ] Windows and Linux packaged builds (extend CI release matrix; format/lint/test jobs must pass on each target OS, not just build)
 
+## Tooling
+
+- [x] Migrate the package manager from npm to Bun — `bun.lock` replaces `package-lock.json`; `tauri.conf.json`'s `beforeDevCommand`/`beforeBuildCommand` now run `bun run dev`/`bun run build`; all three CI jobs and the release workflow use `oven-sh/setup-bun` + `bun install --frozen-lockfile` instead of `actions/setup-node` + `npm ci`; README updated. `tauri-apps/tauri-action` (used in the release workflow) auto-detects Bun via the presence of `bun.lock`, so no extra config was needed there. Verified in-sandbox: `bun install` (565 packages in ~26s, vs. npm's recurring native-binding/SIGSEGV flakiness on this platform this session), `bun run test` (48/48 passing), `bun run lint`, `bun run format:check`, and `bun run build` all pass clean.
+
 ## Cross-cutting / ongoing
 
 - [ ] Keep all three CI checks (`format-check`, `lint`, `test`) green on every merge, as independently required checks — not a combined step (already gated in Phase 0, enforced throughout)

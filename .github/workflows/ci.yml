@@ -20,14 +20,13 @@ jobs:
         with:
           components: rustfmt
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
+          bun-version: latest
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Check Rust formatting (src-tauri)
         run: cargo fmt --manifest-path src-tauri/Cargo.toml -- --check
@@ -36,7 +35,7 @@ jobs:
         run: cargo fmt --manifest-path tools/md-validator/Cargo.toml -- --check
 
       - name: Check frontend formatting
-        run: npm run format:check
+        run: bun run format:check
 
   lint:
     name: lint
@@ -67,14 +66,13 @@ jobs:
             src-tauri
             tools/md-validator
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
+          bun-version: latest
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Run clippy (src-tauri)
         run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
@@ -83,7 +81,7 @@ jobs:
         run: cargo clippy --manifest-path tools/md-validator/Cargo.toml --all-targets -- -D warnings
 
       - name: Run eslint
-        run: npm run lint
+        run: bun run lint
 
   test:
     name: test
@@ -112,14 +110,13 @@ jobs:
             src-tauri
             tools/md-validator
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: npm
+          bun-version: latest
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Run Rust tests (src-tauri)
         run: cargo test --manifest-path src-tauri/Cargo.toml
@@ -128,4 +125,4 @@ jobs:
         run: cargo test --manifest-path tools/md-validator/Cargo.toml
 
       - name: Run frontend tests
-        run: npm run test
+        run: bun run test

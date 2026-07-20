@@ -14,25 +14,25 @@ See `docs/typora-clone-prd.md` for product scope, `docs/typora-clone-system-desi
 ## Prerequisites
 
 - [Rust](https://www.rust-lang.org/tools/install) (stable toolchain)
-- [Node.js](https://nodejs.org/) 20+
+- [Bun](https://bun.sh/) 1.1+
 - Tauri's platform prerequisites: see the [Tauri prerequisites guide](https://tauri.app/start/prerequisites/) — on Linux this means `webkit2gtk`, `libgtk-3-dev`, `librsvg2-dev`, etc.
 
 ## Setup
 
 ```bash
-npm install
+bun install
 ```
 
 ## Develop
 
 ```bash
-npm run tauri dev
+bun run tauri dev
 ```
 
 ## Build
 
 ```bash
-npm run tauri build
+bun run tauri build
 ```
 
 ## Working agreement
@@ -45,11 +45,11 @@ This project follows two non-negotiable rules, enforced in CI:
 
 | Command                                        | Purpose                      |
 | ---------------------------------------------- | ---------------------------- |
-| `npm run format:check` / `cargo fmt --check`   | Formatting (frontend / Rust) |
-| `npm run lint` / `cargo clippy -- -D warnings` | Linting (frontend / Rust)    |
-| `npm run test` / `cargo test`                  | Tests (frontend / Rust)      |
+| `bun run format:check` / `cargo fmt --check`   | Formatting (frontend / Rust) |
+| `bun run lint` / `cargo clippy -- -D warnings` | Linting (frontend / Rust)    |
+| `bun run test` / `cargo test`                  | Tests (frontend / Rust)      |
 
-`npm run format` fixes frontend formatting in place; `cargo fmt` (without `--check`) does the same for Rust.
+`bun run format` fixes frontend formatting in place; `cargo fmt` (without `--check`) does the same for Rust.
 
 ## Releases
 
